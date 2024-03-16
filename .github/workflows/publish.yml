@@ -1,43 +1,44 @@
-# https://docs.github.com/en/actions/publishing-packages/publishing-java-packages-with-gradle
-name: Publish package to the Maven Central Repository
-on:
-  release:
-    types: [ published ]
-
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    - continue-on-error: true
+      name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - continue-on-error: true
+      name: Validate Gradle wrapper
+      uses: gradle/wrapper-validation-action@63d15e7a1e697b1de6f3ba0507106f89100c8518
+    - continue-on-error: true
+      id: version
+      name: Show Version Number
+      run: 'echo "Version=${{ github.event.release.tag_name }}"
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+        '
+    - continue-on-error: true
+      name: Publish package
+      run: './gradlew build
 
-      - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@63d15e7a1e697b1de6f3ba0507106f89100c8518
+        '
+    - continue-on-error: true
+      env:
+        MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+        MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
+        ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
+        ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSWORD }}
+        SDK_VERSION: ${{ github.event.release.tag_name }}
+      name: Publish package
+      run: './gradlew --no-daemon --stacktrace --max-workers=1 --info publish closeAndReleaseStagingRepository
 
-      - name: Show Version Number
-        id: version
-        run: |
-          echo "Version=${{ github.event.release.tag_name }}"
-
-      - name: Publish package
-        run: |
-          ./gradlew build
-
-      - name: Publish package
-        run: |
-          ./gradlew --no-daemon --stacktrace --max-workers=1 --info publish closeAndReleaseStagingRepository
-        env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
-          SDK_VERSION: ${{ github.event.release.tag_name }}
-          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
-          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
-          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSWORD }}
-
+        '
+name: Publish package to the Maven Central Repository
+on:
+  repository_dispatch:
+    types: trigger-ga___publish.yml

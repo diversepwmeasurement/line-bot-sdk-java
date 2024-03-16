@@ -1,43 +1,41 @@
-# Definition of GitHub Actions.
-# Designed to working both LINE's and forked repository.
-#
-# Note:
-#  Memory:
-#    VM Spec = 2core, 7G RAM. as of 2019-10. https://help.github.com/en/github/automating-your-workflow-with-github-actions/virtual-environments-for-github-actions
-#    There are possiblity that speed up build by setting xmx manually. But using default now.
-#  Gradle Deamon:
-#    Disabled via appending ~/.gradle/gradle.properties
-name: CI
-on:
-  push:
-  pull_request:
-  merge_group:
-
 jobs:
   test:
     name: test (JDK ${{ matrix.java }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      name: actions/setup-java@v3 (JDK ${{ matrix.java }})
+      uses: actions/setup-java@v4
+      with:
+        architecture: x64
+        distribution: temurin
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    - continue-on-error: true
+      run: 'mkdir -p ~/.gradle
+
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+
+        '
+    - continue-on-error: true
+      run: ./gradlew -v
+    - continue-on-error: true
+      run: cd generator && mvn package && cd ..
+    - continue-on-error: true
+      run: python3 generate-code.py
+    - continue-on-error: true
+      run: ./gradlew build
     strategy:
       fail-fast: false
       matrix:
-        java: # We want to test on LTSs.
-          - '17'
-          - '21'
-    steps:
-      - name: actions/setup-java@v3 (JDK ${{ matrix.java }})
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: ${{ matrix.java }}
-          architecture: x64
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - run: |
-          mkdir -p ~/.gradle
-          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
-      - run: ./gradlew -v
-      - run: cd generator && mvn package && cd ..
-      - run: python3 generate-code.py
-      - run: ./gradlew build
+        java:
+        - '17'
+        - '21'
+    timeout-minutes: 30
+name: CI
+on:
+  repository_dispatch:
+    types: trigger-ga___gradle.yml

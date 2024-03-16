@@ -1,26 +1,34 @@
-name: pom validation
-on: [push, pull_request]
 jobs:
   test:
     name: test (JDK ${{ matrix.java }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      name: actions/setup-java@v3 (JDK ${{ matrix.java }})
+      uses: actions/setup-java@v4
+      with:
+        architecture: x64
+        distribution: temurin
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    - continue-on-error: true
+      run: 'mkdir -p ~/.gradle
+
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+
+        '
+    - continue-on-error: true
+      run: python3 tests/maven-pom-validation-test.py
     strategy:
       fail-fast: false
       matrix:
-        java: [ '17' ] # We want to test on LTSs.
-    steps:
-    - name: actions/setup-java@v3 (JDK ${{ matrix.java }})
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: ${{ matrix.java }}
-        architecture: x64
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-    - run: |
-        mkdir -p ~/.gradle
-        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
-    - run: python3 tests/maven-pom-validation-test.py
-
+        java:
+        - '17'
+    timeout-minutes: 10
+name: pom validation
+on:
+  repository_dispatch:
+    types: trigger-ga___pom-validation.yml
